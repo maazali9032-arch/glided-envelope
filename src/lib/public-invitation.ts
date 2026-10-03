@@ -55,6 +55,18 @@ function str(v: unknown): string | undefined {
   return typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined;
 }
 
+/** Only absolute HTTP(S) URLs from the public payload may become links/media. */
+export function publicUrl(v: unknown): string | undefined {
+  const value = str(v);
+  if (!value) return undefined;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:" ? value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 // ---------- fetch ----------
 
 export type PublicInvitationResult =
@@ -78,6 +90,7 @@ export async function loadPublicInvitation(slug: string): Promise<PublicInvitati
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ p_slug: slug }),
+      signal: AbortSignal.timeout(15000),
     });
   } catch {
     return { kind: "error" };
@@ -91,6 +104,10 @@ export async function loadPublicInvitation(slug: string): Promise<PublicInvitati
     return { kind: "error" };
   }
 
+  return normalizePublicInvitation(raw);
+}
+
+export function normalizePublicInvitation(raw: unknown): PublicInvitationResult {
   // Normalize a possible outer { data: ... } envelope exactly once.
   let payload: RpcResponse = isObj(raw) ? (raw as RpcResponse) : {};
   if (payload["state"] === undefined && isObj(payload["data"])) {
@@ -98,12 +115,15 @@ export async function loadPublicInvitation(slug: string): Promise<PublicInvitati
   }
 
   if (payload["state"] === "live" && isObj(payload["content"])) {
-    return { kind: "live", config: mapLiveContent(payload["content"]) };
+    const config = mapLiveContent(payload["content"]);
+    // Read only the approved public shop name; never pass shop contacts into live UI.
+    config.brandName = isObj(payload["shop"]) ? str(payload["shop"]["name"]) : undefined;
+    return { kind: "live", config };
   }
   if (payload["state"] === "fallback") {
     return { kind: "fallback", shop: mapShop(payload["shop"]) };
   }
-  return { kind: "not_found" };
+  return payload["state"] === "not_found" ? { kind: "not_found" } : { kind: "error" };
 }
 
 // ---------- mapping ----------
@@ -122,8 +142,7 @@ function mapLiveContent(content: Record<string, unknown>): InvitationConfig {
   const dateDisplay = str(content["wedding_date"]);
   const startTime = str(content["start_time"]);
   const endTime = str(content["end_time"]);
-  const timeDisplay =
-    startTime && endTime ? `${startTime} – ${endTime}` : (startTime ?? endTime);
+  const timeDisplay = startTime && endTime ? `${startTime} – ${endTime}` : (startTime ?? endTime);
 
   const events = Array.isArray(content["events"])
     ? content["events"].map(mapEvent).filter((e): e is EventItem => e !== null)
@@ -138,12 +157,28 @@ function mapLiveContent(content: Record<string, unknown>): InvitationConfig {
       const phone = str(raw["phone"]);
       if (!phone) continue;
       const whatsappUrl =
-        str(raw["whatsapp_url"]) ?? `https://wa.me/${phone.replace(/\D/g, "")}`;
+        publicUrl(raw["whatsapp_url"]) ??
+        (phone.replace(/\D/g, "") ? `https://wa.me/${phone.replace(/\D/g, "")}` : undefined);
       contacts.push({ name: str(raw["name"]), phone, whatsappUrl });
     }
   }
 
   return {
+    groomProfile: {
+      name: str(content["groom_name"]),
+      photo: publicUrl(content["groom_photo_url"]),
+      qualification: str(content["groom_qualification"]),
+      occupation: str(content["groom_occupation"]),
+      parents: str(content["groom_parents"]),
+    },
+    brideProfile: {
+      name: str(content["bride_name"]),
+      photo: publicUrl(content["bride_photo_url"]),
+      qualification: str(content["bride_qualification"]),
+      occupation: str(content["bride_occupation"]),
+      parents: str(content["bride_parents"]),
+    },
+    relatives: str(content["relatives"]),
     monogram,
     groomName,
     brideName,
@@ -157,13 +192,13 @@ function mapLiveContent(content: Record<string, unknown>): InvitationConfig {
       name: str(content["venue_name"]),
       address: str(content["venue_address"]),
       city: str(content["city"]),
-      mapsUrl: str(content["maps_url"]),
-      imageUrl: str(content["venue_image_url"]),
+      mapsUrl: publicUrl(content["maps_url"]),
+      imageUrl: publicUrl(content["venue_image_url"]),
     },
     gallery,
     music: {
       enabled: content["music_enabled"] === true,
-      url: str(content["music_url"]),
+      url: publicUrl(content["music_url"]),
     },
     contacts,
   };
@@ -171,7 +206,7 @@ function mapLiveContent(content: Record<string, unknown>): InvitationConfig {
 
 function computeCountdownTarget(date?: string, time?: string): number | undefined {
   if (!date) return undefined;
-  const candidates = time ? [`${date}T${time}`, `${date} ${time}`, date] : [date];
+  const candidates = time ? [`${date}T${time}`, `${date} ${time}`] : [date];
   for (const c of candidates) {
     const t = new Date(c).getTime();
     if (!Number.isNaN(t)) return t;
@@ -188,17 +223,20 @@ function mapEvent(raw: unknown, index: number): EventItem | null {
     time: str(raw["time"]) ?? str(raw["start_time"]),
     venue: str(raw["venue"]) ?? str(raw["venue_name"]),
     city: str(raw["city"]),
-    mapsUrl: str(raw["maps_url"]) ?? str(raw["mapsUrl"]),
+    mapsUrl: publicUrl(raw["maps_url"]) ?? publicUrl(raw["mapsUrl"]),
     description: str(raw["description"]) ?? str(raw["note"]),
   };
-  if (!ev["name"] && !ev.date && !ev["venue"]) return null;
+  if (!ev.name && !ev.date && !ev.time && !ev.venue && !ev.city && !ev.description && !ev.mapsUrl)
+    return null;
   return ev;
 }
 
 function mapGallery(content: Record<string, unknown>): GalleryPhoto[] {
   const photos: GalleryPhoto[] = [];
   const push = (src: string | undefined, alt: string, caption?: string) => {
-    if (src) photos.push({ src, alt, caption });
+    const safeSrc = publicUrl(src);
+    if (safeSrc && !photos.some((photo) => photo.src === safeSrc))
+      photos.push({ src: safeSrc, alt, caption });
   };
 
   // Couple portraits lead the gallery when present.
@@ -226,7 +264,7 @@ function mapShop(raw: unknown): ShopFallback {
   return {
     name: str(raw["name"]),
     phone: str(raw["phone"]),
-    whatsapp: str(raw["whatsapp"]),
+    whatsapp: publicUrl(raw["whatsapp"]),
     address: str(raw["address"]),
     city: str(raw["city"]),
     business_contact: str(raw["business_contact"]),

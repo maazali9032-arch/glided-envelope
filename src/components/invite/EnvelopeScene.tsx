@@ -9,9 +9,11 @@ type Stage = "sealed" | "cracking" | "flap" | "card" | "done";
 export function EnvelopeScene({
   data,
   onOpened,
+  onInteract,
 }: {
   data: InvitationConfig;
   onOpened: () => void;
+  onInteract: () => void;
 }) {
   const [stage, setStage] = useState<Stage>("sealed");
 
@@ -46,9 +48,18 @@ export function EnvelopeScene({
           role="button"
           tabIndex={0}
           aria-label="Open the wedding invitation"
-          onClick={() => stage === "sealed" && setStage("cracking")}
+          onClick={() => {
+            if (stage === "sealed") {
+              onInteract();
+              setStage("cracking");
+            }
+          }}
           onKeyDown={(e) => {
-            if (stage === "sealed" && (e.key === "Enter" || e.key === " ")) setStage("cracking");
+            if (stage === "sealed" && (e.key === "Enter" || e.key === " ")) {
+              e.preventDefault();
+              onInteract();
+              setStage("cracking");
+            }
           }}
           className="relative mx-auto aspect-[7/5] w-full cursor-pointer select-none outline-none"
           style={{ transformStyle: "preserve-3d" }}
@@ -84,17 +95,10 @@ export function EnvelopeScene({
                 The Wedding of
               </span>
               <h2 className="font-display text-3xl leading-tight text-ink">
-                {data.groomName}
-                {data.groomName && data.brideName && (
-                  <span className="mx-2 text-gold">&</span>
-                )}
-                {data.brideName}
+                {data.groomName && <span className="block break-words">{data.groomName}</span>}
+                {data.groomName && data.brideName && <span className="block text-gold">&</span>}
+                {data.brideName && <span className="block break-words">{data.brideName}</span>}
               </h2>
-              {data.dateDisplay && (
-                <span className="font-sans text-[10px] uppercase tracking-[0.3em] text-gold-deep">
-                  {data.dateDisplay}
-                </span>
-              )}
             </div>
           </motion.div>
 
@@ -115,9 +119,9 @@ export function EnvelopeScene({
             <div
               className="absolute inset-x-0 bottom-0 top-[26%]"
               style={{
-                background:
-                  "linear-gradient(168deg, oklch(0.965 0.014 92), oklch(0.915 0.028 84))",
-                boxShadow: "inset 0 1px 0 oklch(1 0 0 / 0.7), 0 -6px 18px oklch(0.4 0.03 60 / 0.18)",
+                background: "linear-gradient(168deg, oklch(0.965 0.014 92), oklch(0.915 0.028 84))",
+                boxShadow:
+                  "inset 0 1px 0 oklch(1 0 0 / 0.7), 0 -6px 18px oklch(0.4 0.03 60 / 0.18)",
               }}
             />
             {/* side folds */}
@@ -164,9 +168,7 @@ export function EnvelopeScene({
                   className="relative"
                   initial={{ scale: 1 }}
                   animate={
-                    stage === "cracking"
-                      ? { scale: [1, 0.9, 1.05, 1] }
-                      : { scale: [1, 1.02, 1] }
+                    stage === "cracking" ? { scale: [1, 0.9, 1.05, 1] } : { scale: [1, 1.02, 1] }
                   }
                   exit={{ opacity: 0 }}
                   transition={

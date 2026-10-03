@@ -22,7 +22,7 @@ export function FoldPanel({
   });
 
   const rotateX = useTransform(scrollYProgress, [0, 1], reduce ? [0, 0] : [-46, 0]);
-  const opacity = useTransform(scrollYProgress, [0, 0.45, 1], [0, 0.85, 1]);
+  const opacity = useTransform(scrollYProgress, [0, 0.45, 1], reduce ? [1, 1, 1] : [0, 0.85, 1]);
   const y = useTransform(scrollYProgress, [0, 1], reduce ? [0, 0] : [26, 0]);
   const shadow = useTransform(scrollYProgress, [0, 1], [0.42, 0]);
 
@@ -44,8 +44,7 @@ export function FoldPanel({
           className="pointer-events-none absolute inset-x-0 top-0 h-40"
           style={{
             opacity: shadow,
-            background:
-              "linear-gradient(to bottom, oklch(0.35 0.02 60 / 0.5), transparent)",
+            background: "linear-gradient(to bottom, oklch(0.35 0.02 60 / 0.5), transparent)",
           }}
         />
         {children}

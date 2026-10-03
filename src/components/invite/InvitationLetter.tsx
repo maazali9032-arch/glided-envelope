@@ -6,6 +6,7 @@ import { Countdown } from "./Countdown";
 import { Gallery } from "./Gallery";
 import { Contacts } from "./Contacts";
 import type { InvitationConfig } from "@/data/invitation";
+import { useEffect, useState } from "react";
 
 function Kicker({ children }: { children: React.ReactNode }) {
   return (
@@ -17,10 +18,20 @@ function Kicker({ children }: { children: React.ReactNode }) {
 
 export function InvitationLetter({ data }: { data: InvitationConfig }) {
   const names = [data.groomName, data.brideName].filter(Boolean);
-  const showCountdown =
-    typeof data.countdownTarget === "number" && data.countdownTarget > Date.now();
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    if (!data.countdownTarget || data.countdownTarget <= Date.now()) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [data.countdownTarget]);
+  const showCountdown = typeof data.countdownTarget === "number" && data.countdownTarget > now;
+  const profiles = [data.groomProfile, data.brideProfile].filter(
+    (profile) => profile.photo || profile.qualification || profile.occupation || profile.parents,
+  );
   const venue = data.venue;
-  const hasVenue = Boolean(venue.name || venue.address || venue.city || venue.imageUrl);
+  const hasVenue = Boolean(
+    venue.name || venue.address || venue.city || venue.imageUrl || venue.mapsUrl,
+  );
 
   return (
     <main className="mx-auto w-full max-w-[560px] overflow-hidden shadow-[var(--shadow-lift)]">
@@ -48,51 +59,94 @@ export function InvitationLetter({ data }: { data: InvitationConfig }) {
       )}
 
       {/* Couple */}
-      <FoldPanel id="couple" className={data.invocationText ? "" : "min-h-[70vh] pt-24"}>
-        <div className="flex flex-col items-center gap-6 text-center">
-          <Kicker>The Wedding Of</Kicker>
-          {(names.length === 2
-            ? [data.groomName, "&", data.brideName]
-            : names
-          ).map((word, i) => (
-            <motion.h1
-              key={word + i}
-              initial={{ opacity: 0, filter: "blur(14px)", y: 18, scale: 0.97 }}
-              whileInView={{ opacity: 1, filter: "blur(0px)", y: 0, scale: 1 }}
-              viewport={{ once: true, amount: 0.5 }}
-              transition={{ duration: 1.6, delay: 0.35 * i, ease: [0.16, 1, 0.3, 1] }}
-              className={
-                word === "&"
-                  ? "font-display text-2xl italic text-gold"
-                  : "font-display text-5xl uppercase leading-none tracking-[0.08em] text-ink sm:text-6xl"
-              }
-            >
-              {word}
-            </motion.h1>
-          ))}
-          {(data.dateDisplay || data.timeDisplay) && (
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 1.4, delay: 1.15 }}
-              className="mt-4 flex flex-col items-center gap-4"
-            >
-              <Ornament />
-              {data.dateDisplay && (
-                <span className="font-sans text-[11px] uppercase tracking-[0.3em] text-gold-deep">
-                  {data.dateDisplay}
-                </span>
-              )}
-              {data.timeDisplay && (
-                <span className="font-sans text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
-                  {data.timeDisplay}
-                </span>
-              )}
-            </motion.div>
-          )}
-        </div>
-      </FoldPanel>
+      {(names.length > 0 || data.dateDisplay || data.timeDisplay) && (
+        <FoldPanel id="couple" className={data.invocationText ? "" : "min-h-[70vh] pt-24"}>
+          <div className="flex flex-col items-center gap-6 text-center">
+            {names.length > 0 && <Kicker>The Wedding Of</Kicker>}
+            {(names.length === 2 ? [data.groomName, "&", data.brideName] : names).map((word, i) => (
+              <motion.h1
+                key={word + i}
+                initial={{ opacity: 0, filter: "blur(14px)", y: 18, scale: 0.97 }}
+                whileInView={{ opacity: 1, filter: "blur(0px)", y: 0, scale: 1 }}
+                viewport={{ once: true, amount: 0.5 }}
+                transition={{ duration: 1.6, delay: 0.35 * i, ease: [0.16, 1, 0.3, 1] }}
+                className={
+                  word === "&"
+                    ? "font-display text-2xl italic text-gold"
+                    : "w-full font-display text-[clamp(2rem,9vw,3.75rem)] uppercase leading-tight tracking-[0.08em] text-ink"
+                }
+              >
+                {word}
+              </motion.h1>
+            ))}
+            {(data.dateDisplay || data.timeDisplay) && (
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 1.4, delay: 1.15 }}
+                className="mt-4 flex flex-col items-center gap-4"
+              >
+                <Ornament />
+                {data.dateDisplay && (
+                  <span className="font-sans text-[11px] uppercase tracking-[0.3em] text-gold-deep">
+                    {data.dateDisplay}
+                  </span>
+                )}
+                {data.timeDisplay && (
+                  <span className="font-sans text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
+                    {data.timeDisplay}
+                  </span>
+                )}
+              </motion.div>
+            )}
+          </div>
+        </FoldPanel>
+      )}
+
+      {/* Families and optional couple profiles */}
+      {(profiles.length > 0 || data.relatives) && (
+        <FoldPanel id="families">
+          <div className="flex flex-col items-center gap-12 text-center">
+            <Kicker>Together With Our Families</Kicker>
+            {profiles.map((profile, index) => (
+              <article key={index} className="flex w-full max-w-xs flex-col items-center gap-3">
+                {profile.photo && (
+                  <img
+                    src={profile.photo}
+                    alt={profile.name ?? "Couple portrait"}
+                    loading="lazy"
+                    className="mb-3 w-48 border border-champagne/70 bg-ivory p-2 shadow-[var(--shadow-paper)]"
+                  />
+                )}
+                {profile.name && <h2 className="font-display text-3xl text-ink">{profile.name}</h2>}
+                {profile.qualification && (
+                  <p className="font-sans text-xs tracking-widest text-gold-deep">
+                    {profile.qualification}
+                  </p>
+                )}
+                {profile.occupation && (
+                  <p className="font-display text-lg text-muted-foreground">{profile.occupation}</p>
+                )}
+                {profile.parents && (
+                  <p className="whitespace-pre-line font-display text-lg italic text-muted-foreground">
+                    {profile.parents}
+                  </p>
+                )}
+              </article>
+            ))}
+            {data.relatives && (
+              <p className="max-w-xs whitespace-pre-line font-display text-lg leading-relaxed text-muted-foreground">
+                {data.relatives}
+              </p>
+            )}
+            <Ornament />
+            <p className="max-w-xs font-display text-xl italic text-muted-foreground">
+              We invite you to celebrate our special day.
+            </p>
+          </div>
+        </FoldPanel>
+      )}
 
       {/* Countdown */}
       {showCountdown && (

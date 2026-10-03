@@ -912,3 +912,45 @@ cd <repository-name>
 npm i
 npm run dev
 ```
+
+## Public invitation integration and deployment
+
+`PUBLIC_INVITATION_INTEGRATION.md` is the authoritative public data contract.
+The frontend requests only `get_public_invitation_content` for the pathname
+slug. It does not read tables, use the design-specific `detail` payload, or
+submit RSVP data. Guests can respond through the supplied invitation contacts.
+
+Copy `.env.example` to `.env` for local development and enter the two public
+values manually. In Vercel or Lovable, configure `VITE_SUPABASE_URL` and
+`VITE_SUPABASE_ANON_KEY` in the deployment settings before building. Keep actual
+values out of version control.
+
+Live branding uses only the RPC's approved `shop.name`; shop contacts are never
+passed into live invitation components. If the RPC omits the name, the ribbon
+is hidden. Missing optional content hides its related section. There is no
+sample invitation, local music fallback, or public-page QR.
+
+`npm run build` uses Nitro's Vercel preset and generates `.vercel/output`,
+including the dynamic route handler for direct visits and refreshes to
+`/:slug`. Use this generated output rather than a static `dist` directory.
+Lovable's own build environment continues to control its hosting preset.
+All favicon images are the supplied files in `public`; the application head
+references the ICO, PNGs, Apple icons, manifest, and Microsoft tile config.
+
+Validation (Node.js 22.6+; Node.js 24 recommended):
+
+```sh
+npm ci
+npm run test
+npx tsc --noEmit
+npm run lint
+npm run build
+```
+
+The browser integration check in `tests/browser-smoke.mjs` requires Playwright
+and Chromium and a production preview (`npm run preview -- --port 4174`).
+It uses intercepted test responses,
+never writes central data, and saves screenshots to ignored `.test-artifacts`.
+Run `node tests/browser-smoke.mjs`; set `PLAYWRIGHT_MODULE` to an importable
+Playwright module URL when using a bundled runtime, and `TEST_BASE_URL` when
+testing a different preview port.

@@ -1,10 +1,32 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
 import type { GalleryPhoto } from "@/data/invitation";
 
 export function Gallery({ photos }: { photos: GalleryPhoto[] }) {
   const [active, setActive] = useState<GalleryPhoto | null>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!active) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeRef.current?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setActive(null);
+      if (event.key === "Tab") {
+        event.preventDefault();
+        closeRef.current?.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", onKey);
+      previousFocus?.focus();
+    };
+  }, [active]);
   const tilt = [-3.2, 2.4, -1.6];
   const tiltAt = (i: number) => tilt[i % tilt.length] ?? 0;
 
@@ -13,7 +35,8 @@ export function Gallery({ photos }: { photos: GalleryPhoto[] }) {
       <div className="mx-auto flex max-w-md flex-col items-center gap-10">
         {photos.map((photo, i) => (
           <motion.button
-            key={photo.src}
+            key={`${photo.src}-${i}`}
+            aria-label={`View ${photo.alt}`}
             type="button"
             onClick={() => setActive(photo)}
             initial={{ opacity: 0, y: 40, rotate: tiltAt(i) * 2 }}
@@ -53,35 +76,43 @@ export function Gallery({ photos }: { photos: GalleryPhoto[] }) {
         ))}
       </div>
 
-      <AnimatePresence>
-        {active && (
-          <motion.div
-            className="fixed inset-0 z-[60] flex items-center justify-center bg-ink/85 p-5"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setActive(null)}
-          >
-            <button
-              type="button"
-              aria-label="Close photo"
-              className="absolute right-4 top-[max(1rem,env(safe-area-inset-top))] text-cream"
-              onClick={() => setActive(null)}
-            >
-              <X size={22} />
-            </button>
-            <motion.img
-              src={active.src}
-              alt={active.alt}
-              initial={{ scale: 0.94, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.96, opacity: 0 }}
-              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-              className="max-h-[82vh] w-auto max-w-full bg-ivory p-2 shadow-[var(--shadow-lift)]"
-            />
-          </motion.div>
+      {typeof document !== "undefined" &&
+        createPortal(
+          <AnimatePresence>
+            {active && (
+              <motion.div
+                role="dialog"
+                aria-modal="true"
+                aria-label={active.alt}
+                className="fixed inset-0 z-[60] flex items-center justify-center bg-ink/85 p-5"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setActive(null)}
+              >
+                <button
+                  ref={closeRef}
+                  type="button"
+                  aria-label="Close photo"
+                  className="absolute right-4 top-[max(1rem,env(safe-area-inset-top))] text-cream"
+                  onClick={() => setActive(null)}
+                >
+                  <X size={22} />
+                </button>
+                <motion.img
+                  src={active.src}
+                  alt={active.alt}
+                  initial={{ scale: 0.94, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.96, opacity: 0 }}
+                  transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                  className="max-h-[82vh] w-auto max-w-full bg-ivory p-2 shadow-[var(--shadow-lift)]"
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body,
         )}
-      </AnimatePresence>
     </>
   );
 }

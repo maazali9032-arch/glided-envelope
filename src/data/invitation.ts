@@ -30,6 +30,10 @@ export interface EventItem {
 }
 
 export interface InvitationConfig {
+  brandName?: string | undefined;
+  groomProfile: CoupleProfile;
+  brideProfile: CoupleProfile;
+  relatives?: string | undefined;
   monogram: string;
   groomName: string;
   brideName: string;
@@ -50,6 +54,14 @@ export interface InvitationConfig {
   gallery: GalleryPhoto[];
   music: { enabled: boolean; url?: string | undefined };
   contacts: ContactEntry[];
+}
+
+export interface CoupleProfile {
+  name?: string | undefined;
+  photo?: string | undefined;
+  qualification?: string | undefined;
+  occupation?: string | undefined;
+  parents?: string | undefined;
 }
 
 export interface ShopFallback {

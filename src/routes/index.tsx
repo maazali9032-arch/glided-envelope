@@ -2,8 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { NotFoundScreen } from "@/components/invite/States";
 
 const title = "Wedding Invitation";
-const description =
-  "Open your personal wedding invitation link to view the celebration details.";
+const description = "Open your personal wedding invitation link to view the celebration details.";
 
 export const Route = createFileRoute("/")({
   head: () => ({

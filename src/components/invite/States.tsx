@@ -3,18 +3,19 @@ import { motion } from "motion/react";
 import { Crest, Ornament } from "./Ornament";
 import { Dust } from "./Dust";
 import type { ShopFallback } from "@/data/invitation";
+import { BrandRibbon } from "./BrandRibbon";
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="fixed inset-0 z-40 flex items-center justify-center overflow-hidden px-6"
+      className="fixed inset-0 z-40 flex items-center justify-center overflow-y-auto px-5 py-8"
       style={{
         background:
           "radial-gradient(120% 90% at 50% 18%, oklch(0.975 0.014 92) 0%, oklch(0.925 0.024 84) 46%, oklch(0.845 0.032 76) 100%)",
       }}
     >
       <Dust />
-      <div className="paper grain relative w-full max-w-[430px] border border-champagne/70 px-8 py-16 text-center shadow-[var(--shadow-paper)]">
+      <div className="paper grain relative my-auto w-full max-w-[430px] break-words border border-champagne/70 px-6 py-12 text-center shadow-[var(--shadow-paper)]">
         {children}
       </div>
     </div>
@@ -93,7 +94,7 @@ export function FallbackScreen({ shop }: { shop: ShopFallback }) {
       <div className="flex flex-col items-center gap-6">
         <Crest label="✦" className="opacity-80" />
         <Kicker>No Longer Available</Kicker>
-        <h1 className="font-display text-3xl text-ink">This invitation has expired</h1>
+        <h1 className="font-display text-3xl text-ink">This invitation is unavailable</h1>
         <p className="max-w-xs font-display text-base italic text-muted-foreground">
           This invitation is no longer available. For assistance, please contact the studio.
         </p>
@@ -111,7 +112,7 @@ export function FallbackScreen({ shop }: { shop: ShopFallback }) {
           </div>
         )}
         {(shop.phone || whatsapp) && (
-          <div className="mt-2 flex items-center gap-4">
+          <div className="mt-2 flex flex-wrap justify-center gap-4">
             {shop.phone && (
               <a
                 href={`tel:${shop.phone}`}
@@ -132,9 +133,11 @@ export function FallbackScreen({ shop }: { shop: ShopFallback }) {
             )}
           </div>
         )}
-        {shop.business_contact && !shop.phone && (
+        {shop.phone && <p className="font-display text-base text-muted-foreground">{shop.phone}</p>}
+        {shop.business_contact && (
           <p className="font-display text-base text-muted-foreground">{shop.business_contact}</p>
         )}
+        <BrandRibbon name={shop.name} />
       </div>
     </Shell>
   );

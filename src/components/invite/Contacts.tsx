@@ -22,7 +22,7 @@ export function Contacts({ contacts }: { contacts: ContactEntry[] }) {
         >
           {c.name && <p className="font-display text-2xl text-ink">{c.name}</p>}
           <p className="font-sans text-[11px] tracking-[0.2em] text-muted-foreground">{c.phone}</p>
-          <div className="mt-1 flex items-center gap-4">
+          <div className="mt-1 flex flex-wrap justify-center gap-4">
             <a
               href={`tel:${c.phone}`}
               className="inline-flex items-center gap-2 border border-gold px-6 py-3 font-sans text-[10px] uppercase tracking-luxe text-gold-deep transition-colors hover:bg-champagne/40"

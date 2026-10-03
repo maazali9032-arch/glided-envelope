@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useLocation } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
 import { EnvelopeScene } from "@/components/invite/EnvelopeScene";
 import { InvitationLetter } from "@/components/invite/InvitationLetter";
 import { MusicToggle } from "@/components/invite/MusicToggle";
+import { BrandRibbon } from "@/components/invite/BrandRibbon";
 import {
   ErrorScreen,
   FallbackScreen,
@@ -35,26 +37,31 @@ export const Route = createFileRoute("/$slug")({
 });
 
 function SlugPage() {
-  const [result, setResult] = useState<PublicInvitationResult>({ kind: "not_found" });
-  const [loading, setLoading] = useState(true);
+  const pathname = useLocation({ select: (location) => location.pathname });
+  return <InvitationPage key={pathname} pathname={pathname} />;
+}
+
+function InvitationPage({ pathname }: { pathname: string }) {
+  const slug = readSlugFromPathname(pathname);
+  const {
+    data: response,
+    isPending,
+    refetch,
+  } = useQuery({
+    queryKey: ["public-invitation", slug],
+    queryFn: () => loadPublicInvitation(slug!),
+    enabled: Boolean(slug),
+    retry: false,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+  const result: PublicInvitationResult = slug
+    ? (response ?? { kind: "error" })
+    : { kind: "not_found" };
+  const loading = Boolean(slug) && isPending;
   const [opened, setOpened] = useState(false);
   const [interacted, setInteracted] = useState(false);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    const slug = readSlugFromPathname(window.location.pathname);
-    if (!slug) {
-      setResult({ kind: "not_found" });
-      setLoading(false);
-      return;
-    }
-    setResult(await loadPublicInvitation(slug));
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   const live = result.kind === "live";
 
@@ -68,7 +75,7 @@ function SlugPage() {
   const handleOpened = useCallback(() => setOpened(true), []);
 
   if (loading) return <LoadingScreen />;
-  if (result.kind === "error") return <ErrorScreen onRetry={() => void load()} />;
+  if (result.kind === "error") return <ErrorScreen onRetry={() => void refetch()} />;
   if (result.kind === "not_found") return <NotFoundScreen />;
   if (result.kind === "fallback") return <FallbackScreen shop={result.shop} />;
 
@@ -78,13 +85,17 @@ function SlugPage() {
     <div className="relative min-h-screen bg-background">
       <AnimatePresence>
         {!opened && (
-          <div onPointerDown={() => setInteracted(true)}>
-            <EnvelopeScene data={data} onOpened={handleOpened} />
-          </div>
+          <EnvelopeScene
+            data={data}
+            onOpened={handleOpened}
+            onInteract={() => setInteracted(true)}
+          />
         )}
       </AnimatePresence>
 
       <motion.div
+        inert={!opened}
+        aria-hidden={!opened}
         initial={{ opacity: 0 }}
         animate={{ opacity: opened ? 1 : 0 }}
         transition={{ duration: 1 }}
@@ -93,6 +104,7 @@ function SlugPage() {
       </motion.div>
 
       {data.music.enabled && <MusicToggle start={interacted} url={data.music.url} />}
+      <BrandRibbon name={data.brandName} />
     </div>
   );
 }

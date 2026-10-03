@@ -96,6 +96,12 @@
     overflow-x: hidden;
   }
 
+  main h1,
+  main h2,
+  main p {
+    overflow-wrap: anywhere;
+  }
+
   h1,
   h2,
   h3 {
@@ -104,14 +110,46 @@
   }
 }
 
+.brand-ribbon {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 55;
+  height: clamp(10px, 1.8dvh, 16px);
+  overflow: hidden;
+  border-top: 1px solid color-mix(in oklab, var(--gold) 25%, transparent);
+  background: color-mix(in oklab, var(--ivory) 38%, transparent);
+  color: var(--gold-deep);
+  pointer-events: none;
+  font-size: 8px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+.brand-ribbon-track {
+  display: flex;
+  width: max-content;
+  height: 100%;
+  animation: brand-marquee 35s linear infinite;
+}
+.brand-ribbon-copy {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  min-width: 100vw;
+  white-space: nowrap;
+}
+@keyframes brand-marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
 @utility paper {
   background-color: var(--cream);
-  background-image:
-    linear-gradient(
-      168deg,
-      color-mix(in oklab, var(--ivory) 96%, transparent),
-      color-mix(in oklab, var(--champagne) 30%, var(--cream))
-    );
+  background-image: linear-gradient(
+    168deg,
+    color-mix(in oklab, var(--ivory) 96%, transparent),
+    color-mix(in oklab, var(--champagne) 30%, var(--cream))
+  );
   position: relative;
 }
 
