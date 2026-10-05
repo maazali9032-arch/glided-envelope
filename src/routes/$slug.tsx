@@ -83,28 +83,42 @@ function InvitationPage({ pathname }: { pathname: string }) {
 
   return (
     <div className="relative min-h-screen bg-background">
-      <AnimatePresence>
-        {!opened && (
-          <EnvelopeScene
-            data={data}
-            onOpened={handleOpened}
-            onInteract={() => setInteracted(true)}
-          />
-        )}
-      </AnimatePresence>
+      {opened && (
+        <img
+          src="/decorative-frame.webp"
+          alt=""
+          aria-hidden="true"
+          className="pointer-events-none fixed inset-0 z-50 hidden h-screen w-screen object-fill opacity-50 max-[684px]:block"
 
-      <motion.div
-        inert={!opened}
-        aria-hidden={!opened}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: opened ? 1 : 0 }}
-        transition={{ duration: 1 }}
-      >
-        <InvitationLetter data={data} />
-      </motion.div>
+          // className="pointer-events-none fixed inset-0 z-40 hidden h-screen w-screen object-fill opacity-50 max-[684px]:block"
+        />
+      )}
+      <div className="relative z-30">
+        <AnimatePresence>
+          {!opened && (
+            <EnvelopeScene
+              data={data}
+              onOpened={handleOpened}
+              onInteract={() => setInteracted(true)}
+            />
+          )}
+        </AnimatePresence>
 
-      {data.music.enabled && <MusicToggle start={interacted} url={data.music.url} />}
-      <BrandRibbon name={data.brandName} />
+        <motion.div
+          inert={!opened}
+          aria-hidden={!opened}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: opened ? 1 : 0 }}
+          transition={{ duration: 1 }}
+        >
+          <InvitationLetter data={data} />
+        </motion.div>
+      </div>
+
+      <div className="relative z-[60]">
+        {data.music.enabled && <MusicToggle start={interacted} url={data.music.url} />}
+        <BrandRibbon name={data.brandName} />
+      </div>
     </div>
   );
 }
